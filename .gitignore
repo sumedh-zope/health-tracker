@@ -1,0 +1,35 @@
+# Environment - never commit real secrets
+.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Django
+staticfiles/
+*.sqlite3
+media/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Docker
+.docker/
+
+# Claude
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
