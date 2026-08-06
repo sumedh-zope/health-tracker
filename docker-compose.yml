@@ -8,6 +8,7 @@ networks:
 
 services:
   backend:
+    container_name: backend
     build:
       context: ./backend
     expose:
@@ -26,6 +27,7 @@ services:
       - "traefik.enable=false"
 
   mcp-server:
+    container_name: mcp-server
     build:
       context: ./mcp-server
     expose:
@@ -52,6 +54,7 @@ services:
       - "traefik.docker.network=cloud"
 
   frontend:
+    container_name: frontend
     build:
       context: ./frontend
     expose:
