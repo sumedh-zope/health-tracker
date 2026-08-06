@@ -12,8 +12,13 @@ services:
       context: ./backend
     expose:
       - "8000"
-    env_file:
-      - .env
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - DATABASE_URL=${DATABASE_URL}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - SERVICE_API_KEY=${SERVICE_API_KEY}
     networks:
       - app
     restart: unless-stopped
@@ -25,8 +30,10 @@ services:
       context: ./mcp-server
     expose:
       - "8001"
-    env_file:
-      - .env
+    environment:
+      - DJANGO_API_URL=${DJANGO_API_URL}
+      - MCP_API_KEY=${MCP_API_KEY}
+      - SERVICE_API_KEY=${SERVICE_API_KEY}
     networks:
       - cloud
       - app
@@ -35,7 +42,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mcp-server.rule=Host(`${DOMAIN}`) && PathPrefix(`/mcp`)"
+      - "traefik.http.routers.mcp-server.rule=Host(`health.s8e.in`) && PathPrefix(`/mcp`)"
       - "traefik.http.routers.mcp-server.entrypoints=websecure"
       - "traefik.http.routers.mcp-server.tls=true"
       - "traefik.http.routers.mcp-server.tls.certresolver=cloudflare"
@@ -49,8 +56,6 @@ services:
       context: ./frontend
     expose:
       - "3000"
-    env_file:
-      - .env
     networks:
       - cloud
       - app
@@ -59,7 +64,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.frontend.rule=Host(`health.s8e.in`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls=true"
       - "traefik.http.routers.frontend.tls.certresolver=cloudflare"
