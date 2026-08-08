@@ -72,5 +72,8 @@ services:
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls=true"
       - "traefik.http.routers.frontend.tls.certresolver=cloudflare"
+      # Gated by the standalone Authelia Portainer stack — see that stack's
+      # compose file for the authelia-forwardauth@docker middleware definition.
+      - "traefik.http.routers.frontend.middlewares=authelia-forwardauth@docker"
       - "traefik.http.services.frontend.loadbalancer.server.port=3000"
       - "traefik.docker.network=cloud"

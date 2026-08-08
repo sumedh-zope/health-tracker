@@ -46,6 +46,7 @@ services:
       - "3000:3000"
     labels:
       - "traefik.enable=false"
+      - "traefik.http.routers.frontend.middlewares="
 
 volumes:
   pgdata:
