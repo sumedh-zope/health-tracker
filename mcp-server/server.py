@@ -34,7 +34,7 @@ SERVICE_API_KEY = os.environ.get("SERVICE_API_KEY", "")
 # discover which authorization server to use.
 OIDC_ISSUER = os.environ.get("OIDC_ISSUER", "https://auth.health.s8e.in")
 OIDC_CLIENT_ID = os.environ.get("OIDC_CLIENT_ID", "mcp-server")
-OIDC_RESOURCE_URL = os.environ.get("OIDC_RESOURCE_URL", "https://health.s8e.in/mcp")
+OIDC_RESOURCE_URL = os.environ.get("OIDC_RESOURCE_URL", "https://mcp.health.s8e.in/mcp")
 
 if not SERVICE_API_KEY:
     raise RuntimeError("SERVICE_API_KEY environment variable is required")

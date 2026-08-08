@@ -47,21 +47,17 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mcp-server.rule=Host(`health.s8e.in`) && PathPrefix(`/mcp`)"
+      # Dedicated subdomain — no path prefix, no stripprefix. Avoids
+      # sharing a Host rule with `frontend`'s router (which previously
+      # won priority for every health.s8e.in request, including /mcp,
+      # since Traefik didn't prioritize the more specific PathPrefix rule
+      # the way we assumed). Requires a DNS record for mcp.health.s8e.in.
+      - "traefik.http.routers.mcp-server.rule=Host(`mcp.health.s8e.in`)"
       - "traefik.http.routers.mcp-server.entrypoints=websecure"
       - "traefik.http.routers.mcp-server.tls=true"
       - "traefik.http.routers.mcp-server.tls.certresolver=cloudflare"
-      - "traefik.http.routers.mcp-server.middlewares=mcp-stripprefix"
-      - "traefik.http.middlewares.mcp-stripprefix.stripprefix.prefixes=/mcp"
       - "traefik.http.services.mcp-server.loadbalancer.server.port=8001"
       - "traefik.docker.network=cloud"
-      # RFC 9728 inserts the well-known path at the host root, not under
-      # /mcp — needs its own router (no stripprefix) to the same service.
-      - "traefik.http.routers.mcp-server-metadata.rule=Host(`health.s8e.in`) && Path(`/.well-known/oauth-protected-resource/mcp`)"
-      - "traefik.http.routers.mcp-server-metadata.entrypoints=websecure"
-      - "traefik.http.routers.mcp-server-metadata.tls=true"
-      - "traefik.http.routers.mcp-server-metadata.tls.certresolver=cloudflare"
-      - "traefik.http.routers.mcp-server-metadata.service=mcp-server"
 
   frontend:
     container_name: health-tracker-frontend
