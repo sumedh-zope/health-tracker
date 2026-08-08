@@ -35,8 +35,10 @@ services:
       - "8001"
     environment:
       - DJANGO_API_URL=${DJANGO_API_URL}
-      - MCP_API_KEY=${MCP_API_KEY}
       - SERVICE_API_KEY=${SERVICE_API_KEY}
+      - OIDC_ISSUER=${OIDC_ISSUER}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_RESOURCE_URL=${OIDC_RESOURCE_URL}
     networks:
       - cloud
       - app
@@ -53,6 +55,13 @@ services:
       - "traefik.http.middlewares.mcp-stripprefix.stripprefix.prefixes=/mcp"
       - "traefik.http.services.mcp-server.loadbalancer.server.port=8001"
       - "traefik.docker.network=cloud"
+      # RFC 9728 inserts the well-known path at the host root, not under
+      # /mcp — needs its own router (no stripprefix) to the same service.
+      - "traefik.http.routers.mcp-server-metadata.rule=Host(`health.s8e.in`) && Path(`/.well-known/oauth-protected-resource/mcp`)"
+      - "traefik.http.routers.mcp-server-metadata.entrypoints=websecure"
+      - "traefik.http.routers.mcp-server-metadata.tls=true"
+      - "traefik.http.routers.mcp-server-metadata.tls.certresolver=cloudflare"
+      - "traefik.http.routers.mcp-server-metadata.service=mcp-server"
 
   frontend:
     container_name: health-tracker-frontend

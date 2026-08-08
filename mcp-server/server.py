@@ -3,7 +3,8 @@ Health Tracker MCP Server
 
 Exposes health tracking tools to Claude via the Model Context Protocol (MCP)
 using Streamable HTTP transport. Authenticates to the Django backend with a
-shared SERVICE_API_KEY and validates incoming Claude requests with MCP_API_KEY.
+shared SERVICE_API_KEY and validates incoming Claude requests with an OAuth
+2.0 bearer token, verified against Authelia's OIDC provider.
 """
 
 import os
@@ -12,9 +13,12 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
+import jwt
+from jwt import PyJWKClient
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
+from starlette.routing import Route
 from mcp.server.mcpserver.server import MCPServer
 
 # ---------------------------------------------------------------------------
@@ -23,12 +27,19 @@ from mcp.server.mcpserver.server import MCPServer
 
 DJANGO_API_URL = os.environ.get("DJANGO_API_URL", "http://backend:8000/api").rstrip("/")
 SERVICE_API_KEY = os.environ.get("SERVICE_API_KEY", "")
-MCP_API_KEY = os.environ.get("MCP_API_KEY", "")
+
+# Authelia is the OIDC provider issuing bearer tokens for MCP clients (e.g.
+# Claude.ai's connector). OIDC_RESOURCE_URL is this server's own public URL,
+# advertised via OAuth Protected Resource Metadata (RFC 9728) so clients can
+# discover which authorization server to use.
+OIDC_ISSUER = os.environ.get("OIDC_ISSUER", "https://auth.health.s8e.in")
+OIDC_CLIENT_ID = os.environ.get("OIDC_CLIENT_ID", "mcp-server")
+OIDC_RESOURCE_URL = os.environ.get("OIDC_RESOURCE_URL", "https://health.s8e.in/mcp")
 
 if not SERVICE_API_KEY:
     raise RuntimeError("SERVICE_API_KEY environment variable is required")
-if not MCP_API_KEY:
-    raise RuntimeError("MCP_API_KEY environment variable is required")
+
+_jwks_client = PyJWKClient(f"{OIDC_ISSUER}/jwks.json")
 
 # ---------------------------------------------------------------------------
 # Django API client helpers
@@ -577,32 +588,86 @@ async def _fetch_goals_and_summary(date: str) -> tuple[Any, Any]:
 
 
 # ---------------------------------------------------------------------------
+# OAuth Protected Resource Metadata (RFC 9728)
+# ---------------------------------------------------------------------------
+#
+# Lets an MCP client (e.g. Claude.ai) discover which authorization server to
+# use for this resource before it has a token. Exposed at both the
+# unprefixed path (reached directly when already behind the /mcp stripprefix
+# router) and the RFC 9728 host-root-inserted path (reached via a dedicated
+# Traefik router — see docker-compose.yml).
+
+_UNAUTHENTICATED_PATHS = {
+    "/health",
+    "/healthz",
+    "/.well-known/oauth-protected-resource",
+    "/.well-known/oauth-protected-resource/mcp",
+}
+
+
+async def oauth_protected_resource_metadata(request: Request) -> JSONResponse:
+    return JSONResponse(
+        {
+            "resource": OIDC_RESOURCE_URL,
+            "authorization_servers": [OIDC_ISSUER],
+            "bearer_methods_supported": ["header"],
+        }
+    )
+
+
+_RESOURCE_METADATA_ROUTES = [
+    Route("/.well-known/oauth-protected-resource", oauth_protected_resource_metadata),
+    Route("/.well-known/oauth-protected-resource/mcp", oauth_protected_resource_metadata),
+]
+
+# ---------------------------------------------------------------------------
 # Starlette auth middleware + app assembly
 # ---------------------------------------------------------------------------
 
+_RESOURCE_METADATA_URL = f"{OIDC_RESOURCE_URL}/.well-known/oauth-protected-resource"
+
+
 class BearerAuthMiddleware(BaseHTTPMiddleware):
-    """Reject requests that do not carry a valid MCP_API_KEY Bearer token."""
+    """Reject requests that do not carry a valid OIDC-issued Bearer token."""
 
     async def dispatch(self, request: Request, call_next):
-        # Allow health-check probes without auth
-        if request.url.path in ("/health", "/healthz"):
+        if request.url.path in _UNAUTHENTICATED_PATHS:
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
-            return Response(
-                content='{"detail": "Missing Authorization header"}',
-                status_code=401,
-                media_type="application/json",
-            )
+            return self._unauthorized("Missing Authorization header")
+
         token = auth_header.removeprefix("Bearer ").strip()
-        if token != MCP_API_KEY:
-            return Response(
-                content='{"detail": "Invalid API key"}',
-                status_code=403,
-                media_type="application/json",
+        try:
+            signing_key = _jwks_client.get_signing_key_from_jwt(token)
+            claims = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                issuer=OIDC_ISSUER,
+                options={"verify_aud": False, "require": ["exp", "iss"]},
             )
+        except jwt.PyJWTError as exc:
+            return self._unauthorized(f"Invalid token: {exc}")
+
+        if claims.get("client_id") != OIDC_CLIENT_ID:
+            return self._unauthorized("Token was not issued to this client")
+
         return await call_next(request)
+
+    @staticmethod
+    def _unauthorized(detail: str) -> Response:
+        return Response(
+            content=json.dumps({"detail": detail}),
+            status_code=401,
+            media_type="application/json",
+            headers={
+                "WWW-Authenticate": (
+                    f'Bearer resource_metadata="{_RESOURCE_METADATA_URL}"'
+                )
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -613,8 +678,11 @@ if __name__ == "__main__":
     import uvicorn
 
     # streamable_http_app() returns a Starlette app with the proper lifespan
-    # already wired up. Add auth middleware directly to it.
+    # already wired up. Add auth middleware and the resource metadata routes
+    # directly to it.
     app = mcp.streamable_http_app(host="0.0.0.0")
+    for route in _RESOURCE_METADATA_ROUTES:
+        app.routes.insert(0, route)
     app.add_middleware(BearerAuthMiddleware)
 
     uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info")
