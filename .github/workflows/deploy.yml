@@ -1,0 +1,14 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  trigger-portainer-redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Portainer stack webhook
+        run: |
+          curl -fsS -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
