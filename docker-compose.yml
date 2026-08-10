@@ -18,7 +18,6 @@ services:
       - DEBUG=${DEBUG}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - DATABASE_URL=${DATABASE_URL}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - SERVICE_API_KEY=${SERVICE_API_KEY}
     networks:
       - cloud
