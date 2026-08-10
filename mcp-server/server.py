@@ -72,6 +72,14 @@ async def django_post(path: str, body: dict) -> dict | list:
         return response.json()
 
 
+async def django_delete(path: str) -> None:
+    """Perform an authenticated DELETE request to the Django API."""
+    url = f"{DJANGO_API_URL}{path}"
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.delete(url, headers=_django_headers())
+        response.raise_for_status()
+
+
 def _fmt_error(exc: httpx.HTTPStatusError) -> str:
     """Format an HTTP error into a human-readable string."""
     try:
@@ -572,6 +580,103 @@ async def get_progress_vs_goals(date: str | None = None) -> str:
             )
 
     return "\n".join(lines)
+
+
+@mcp.tool()
+async def delete_meal_log(meal_log_id: int) -> str:
+    """Delete an entire meal log and all its entries by ID.
+
+    Args:
+        meal_log_id: The ID of the meal log to delete.
+    """
+    try:
+        await django_delete(f"/food/logs/{meal_log_id}/")
+    except httpx.HTTPStatusError as exc:
+        return _fmt_error(exc)
+    except httpx.RequestError as exc:
+        return f"Network error contacting Django API: {exc}"
+    return f"Meal log {meal_log_id} deleted."
+
+
+@mcp.tool()
+async def delete_meal_log_entry(meal_log_id: int, entry_id: int) -> str:
+    """Delete a single entry from a meal log by ID.
+
+    Args:
+        meal_log_id: The ID of the meal log containing the entry.
+        entry_id: The ID of the entry to delete.
+    """
+    try:
+        await django_delete(f"/food/logs/{meal_log_id}/entries/{entry_id}/")
+    except httpx.HTTPStatusError as exc:
+        return _fmt_error(exc)
+    except httpx.RequestError as exc:
+        return f"Network error contacting Django API: {exc}"
+    return f"Entry {entry_id} deleted from meal log {meal_log_id}."
+
+
+@mcp.tool()
+async def delete_body_metric(metric_id: int) -> str:
+    """Delete a body metric entry (weight/body fat) by ID.
+
+    Args:
+        metric_id: The ID of the body metric to delete.
+    """
+    try:
+        await django_delete(f"/metrics/{metric_id}/")
+    except httpx.HTTPStatusError as exc:
+        return _fmt_error(exc)
+    except httpx.RequestError as exc:
+        return f"Network error contacting Django API: {exc}"
+    return f"Body metric {metric_id} deleted."
+
+
+@mcp.tool()
+async def delete_goal(goal_id: int) -> str:
+    """Delete a goal by ID.
+
+    Args:
+        goal_id: The ID of the goal to delete.
+    """
+    try:
+        await django_delete(f"/goals/{goal_id}/")
+    except httpx.HTTPStatusError as exc:
+        return _fmt_error(exc)
+    except httpx.RequestError as exc:
+        return f"Network error contacting Django API: {exc}"
+    return f"Goal {goal_id} deleted."
+
+
+@mcp.tool()
+async def delete_recipe(recipe_id: int) -> str:
+    """Delete a recipe by ID.
+
+    Args:
+        recipe_id: The ID of the recipe to delete.
+    """
+    try:
+        await django_delete(f"/food/recipes/{recipe_id}/")
+    except httpx.HTTPStatusError as exc:
+        return _fmt_error(exc)
+    except httpx.RequestError as exc:
+        return f"Network error contacting Django API: {exc}"
+    return f"Recipe {recipe_id} deleted."
+
+
+@mcp.tool()
+async def delete_food_item(food_item_id: int) -> str:
+    """Delete a food item by ID.
+
+    Args:
+        food_item_id: The ID of the food item to delete.
+    """
+    try:
+        await django_delete(f"/food/items/{food_item_id}/")
+    except httpx.HTTPStatusError as exc:
+        return _fmt_error(exc)
+    except httpx.RequestError as exc:
+        return f"Network error contacting Django API: {exc}"
+    return f"Food item {food_item_id} deleted."
 
 
 async def _fetch_goals_and_summary(date: str) -> tuple[Any, Any]:

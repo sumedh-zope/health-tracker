@@ -12,6 +12,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from django.shortcuts import get_object_or_404
+
 from .models import FoodItem, MealLog, MealLogEntry, Recipe
 from .serializers import (
     DailySummarySerializer,
@@ -100,6 +102,14 @@ class MealLogViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save(meal_log=meal_log)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["delete"], url_path="entries/(?P<entry_pk>[^/.]+)")
+    def delete_entry(self, request: Request, pk: int = None, entry_pk: int = None) -> Response:
+        """DELETE /api/food/logs/{id}/entries/{entry_pk}/"""
+        meal_log = self.get_object()
+        entry = get_object_or_404(MealLogEntry, pk=entry_pk, meal_log=meal_log)
+        entry.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["get"], url_path="daily-summary")
     def daily_summary(self, request: Request) -> Response:
