@@ -17,10 +17,10 @@ export default function MealLogCard({ log, onUpdate }: MealLogCardProps) {
   const [expanded, setExpanded] = useState(true)
   const [deleting, setDeleting] = useState(false)
 
-  const totalCalories = log.entries.reduce((sum, e) => sum + e.calories, 0)
-  const totalProtein = log.entries.reduce((sum, e) => sum + e.protein, 0)
-  const totalCarbs = log.entries.reduce((sum, e) => sum + e.carbs, 0)
-  const totalFat = log.entries.reduce((sum, e) => sum + e.fat, 0)
+  const totalCalories = log.entries.reduce((sum, e) => sum + Number(e.calories), 0)
+  const totalProtein = log.entries.reduce((sum, e) => sum + Number(e.protein), 0)
+  const totalCarbs = log.entries.reduce((sum, e) => sum + Number(e.carbs), 0)
+  const totalFat = log.entries.reduce((sum, e) => sum + Number(e.fat), 0)
 
   async function handleDeleteEntry(entryId: number) {
     try {
