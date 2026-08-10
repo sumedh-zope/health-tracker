@@ -93,10 +93,10 @@ export default function FoodLog() {
     (acc, l) => {
       const logTotals = l.entries.reduce(
         (eAcc, e) => ({
-          calories: eAcc.calories + e.calories,
-          protein: eAcc.protein + e.protein,
-          carbs: eAcc.carbs + e.carbs,
-          fat: eAcc.fat + e.fat,
+          calories: eAcc.calories + Number(e.calories),
+          protein: eAcc.protein + Number(e.protein),
+          carbs: eAcc.carbs + Number(e.carbs),
+          fat: eAcc.fat + Number(e.fat),
         }),
         { calories: 0, protein: 0, carbs: 0, fat: 0 }
       )
