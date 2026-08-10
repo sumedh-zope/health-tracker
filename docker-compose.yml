@@ -65,6 +65,8 @@ services:
       context: ./frontend
     expose:
       - "3000"
+    environment:
+      - SERVICE_API_KEY=${SERVICE_API_KEY}
     networks:
       - cloud
       - app
