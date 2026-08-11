@@ -52,6 +52,10 @@ export default function Dashboard() {
   const carbsGoal = findGoalTarget(goals, 'carbs')
   const fatGoal = findGoalTarget(goals, 'fat')
 
+  const consumed = Number(s.total_calories)
+  const burned = Number(s.calories_burned)
+  const netCalories = consumed - burned
+
   return (
     <div className="page">
       <div className="page-header">
@@ -63,18 +67,41 @@ export default function Dashboard() {
         {/* Calories card */}
         <div className="card">
           <h2>Calories Today</h2>
-          <div className="calorie-display">
-            <span className="calorie-current">{Math.round(s.total_calories)}</span>
-            {calorieGoal !== undefined && (
-              <>
-                <span className="calorie-sep"> / </span>
-                <span className="calorie-goal">{Math.round(calorieGoal)} kcal</span>
-              </>
-            )}
-          </div>
+          {burned > 0 ? (
+            <div className="calorie-breakdown">
+              <div className="calorie-breakdown-row">
+                <span className="calorie-breakdown-label">Consumed</span>
+                <span className="calorie-breakdown-value">{Math.round(consumed)} kcal</span>
+              </div>
+              <div className="calorie-breakdown-row calorie-breakdown-burned">
+                <span className="calorie-breakdown-label">Burned</span>
+                <span className="calorie-breakdown-value">−{Math.round(burned)} kcal</span>
+              </div>
+              <div className="calorie-breakdown-divider" />
+              <div className="calorie-breakdown-row calorie-breakdown-net">
+                <span className="calorie-breakdown-label">Net</span>
+                <span className="calorie-breakdown-value">{Math.round(netCalories)} kcal</span>
+              </div>
+              {calorieGoal !== undefined && (
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted, #888)', marginTop: 4 }}>
+                  Goal: {Math.round(calorieGoal)} kcal
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="calorie-display">
+              <span className="calorie-current">{Math.round(consumed)}</span>
+              {calorieGoal !== undefined && (
+                <>
+                  <span className="calorie-sep"> / </span>
+                  <span className="calorie-goal">{Math.round(calorieGoal)} kcal</span>
+                </>
+              )}
+            </div>
+          )}
           <MacroBar
             label="Calories"
-            current={s.total_calories}
+            current={netCalories}
             goal={calorieGoal ?? 0}
             unit=" kcal"
             color="#f5a623"
@@ -126,6 +153,9 @@ export default function Dashboard() {
           <div className="quick-actions">
             <Link to="/log" className="btn btn-primary">
               + Add Meal
+            </Link>
+            <Link to="/activity" className="btn btn-primary">
+              + Log Activity
             </Link>
             <Link to="/metrics" className="btn btn-secondary">
               + Log Weight

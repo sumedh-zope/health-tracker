@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "apps.food",
     "apps.metrics",
     "apps.goals",
+    "apps.activity",
 ]
 
 # ---------------------------------------------------------------------------
