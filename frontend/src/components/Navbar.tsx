@@ -6,6 +6,7 @@ const links = [
   { to: '/metrics', label: 'Body Metrics' },
   { to: '/goals', label: 'Goals' },
   { to: '/recipes', label: 'Recipes' },
+  { to: '/history', label: 'History' },
 ]
 
 export default function Navbar() {

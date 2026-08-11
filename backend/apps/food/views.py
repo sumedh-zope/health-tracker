@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date as date_type
+from datetime import date as date_type, timedelta
 
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -14,6 +14,7 @@ from rest_framework.response import Response
 
 from django.shortcuts import get_object_or_404
 
+from apps.goals.models import Goal
 from .models import FoodItem, MealLog, MealLogEntry, Recipe
 from .serializers import (
     DailySummarySerializer,
@@ -151,3 +152,66 @@ class MealLogViewSet(viewsets.ModelViewSet):
 
         serializer = DailySummarySerializer(payload)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="history")
+    def history(self, request: Request) -> Response:
+        """
+        GET /api/food/logs/history/?days=30
+
+        Returns one entry per day (descending) for dates that have meal data,
+        including macro totals and which nutrition goals were active that day.
+        """
+        try:
+            days = max(1, int(request.query_params.get("days", 30)))
+        except ValueError:
+            raise ValidationError({"days": "Must be a positive integer."})
+
+        end_date = date_type.today()
+        start_date = end_date - timedelta(days=days - 1)
+
+        # Daily totals for every date in range that has at least one entry
+        daily_rows = (
+            MealLogEntry.objects.filter(
+                meal_log__date__gte=start_date,
+                meal_log__date__lte=end_date,
+            )
+            .values("meal_log__date")
+            .annotate(
+                total_calories=Sum("calories"),
+                total_protein=Sum("protein"),
+                total_carbs=Sum("carbs"),
+                total_fat=Sum("fat"),
+            )
+            .order_by("-meal_log__date")
+        )
+
+        # All nutrition goals that overlap with the requested date range
+        goals = list(
+            Goal.objects.filter(
+                goal_type__in=["calories", "protein", "carbs", "fat"],
+                start_date__lte=end_date,
+            ).filter(Q(end_date__isnull=True) | Q(end_date__gte=start_date))
+        )
+
+        result = []
+        for row in daily_rows:
+            day = row["meal_log__date"]
+            day_goals = [
+                {
+                    "goal_type": g.goal_type,
+                    "target_value": float(g.target_value),
+                    "unit": g.unit,
+                }
+                for g in goals
+                if g.start_date <= day and (g.end_date is None or g.end_date >= day)
+            ]
+            result.append({
+                "date": day,
+                "total_calories": float(row["total_calories"] or 0),
+                "total_protein": float(row["total_protein"] or 0),
+                "total_carbs": float(row["total_carbs"] or 0),
+                "total_fat": float(row["total_fat"] or 0),
+                "goals": day_goals,
+            })
+
+        return Response(result)

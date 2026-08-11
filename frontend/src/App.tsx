@@ -5,6 +5,7 @@ import FoodLog from './pages/FoodLog'
 import Metrics from './pages/Metrics'
 import Goals from './pages/Goals'
 import Recipes from './pages/Recipes'
+import History from './pages/History'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/metrics" element={<Metrics />} />
           <Route path="/goals" element={<Goals />} />
           <Route path="/recipes" element={<Recipes />} />
+          <Route path="/history" element={<History />} />
         </Routes>
       </main>
     </BrowserRouter>
