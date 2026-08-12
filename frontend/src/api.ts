@@ -46,7 +46,26 @@ export interface DailySummary {
   total_protein: number
   total_carbs: number
   total_fat: number
+  calories_burned: number
   meals: MealLog[]
+}
+
+export interface Activity {
+  id: number
+  date: string
+  name: string
+  duration_minutes?: number
+  calories_burned: number
+  notes?: string
+  created_at: string
+}
+
+export interface CreateActivityPayload {
+  date: string
+  name: string
+  calories_burned: number
+  duration_minutes?: number
+  notes?: string
 }
 
 export interface BodyWeight {
@@ -208,6 +227,26 @@ export async function updateGoal(id: number, payload: Partial<CreateGoalPayload 
 
 export async function deleteGoal(id: number): Promise<void> {
   await client.delete(`/goals/${id}/`)
+}
+
+// ── Recipes ────────────────────────────────────────────────────────────────
+
+// ── Activities ──────────────────────────────────────────────────────────────
+
+export async function getActivities(date?: string): Promise<Activity[]> {
+  const res = await client.get<Activity[]>('/activity/', {
+    params: date ? { date } : undefined,
+  })
+  return res.data
+}
+
+export async function logActivity(payload: CreateActivityPayload): Promise<Activity> {
+  const res = await client.post<Activity>('/activity/', payload)
+  return res.data
+}
+
+export async function deleteActivity(id: number): Promise<void> {
+  await client.delete(`/activity/${id}/`)
 }
 
 // ── Recipes ────────────────────────────────────────────────────────────────

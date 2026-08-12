@@ -679,6 +679,73 @@ async def delete_food_item(food_item_id: int) -> str:
     return f"Food item {food_item_id} deleted."
 
 
+@mcp.tool()
+async def log_activity(
+    date: str,
+    name: str,
+    calories_burned: int,
+    duration_minutes: int | None = None,
+    notes: str = "",
+) -> str:
+    """Log a physical activity with calories burned.
+    Args:
+        date: Date in YYYY-MM-DD format.
+        name: Activity name (e.g. "Morning Run", "Gym Session").
+        calories_burned: Estimated calories burned.
+        duration_minutes: Duration in minutes (optional).
+        notes: Any extra notes (optional).
+    """
+    body = {"date": date, "name": name, "calories_burned": calories_burned}
+    if duration_minutes is not None:
+        body["duration_minutes"] = duration_minutes
+    if notes:
+        body["notes"] = notes
+    try:
+        data = await django_post("/activity/", body)
+    except httpx.HTTPStatusError as exc:
+        return _fmt_error(exc)
+    except httpx.RequestError as exc:
+        return f"Network error contacting Django API: {exc}"
+    return f"Logged: {data['name']} on {data['date']} — {data['calories_burned']} kcal burned."
+
+
+@mcp.tool()
+async def get_activities(days: int = 7) -> str:
+    """List logged activities for the past N days.
+    Args:
+        days: Number of days to look back (default 7).
+    """
+    since = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
+    try:
+        items = await django_get("/activity/", params={"date_after": since})
+    except httpx.HTTPStatusError as exc:
+        return _fmt_error(exc)
+    except httpx.RequestError as exc:
+        return f"Network error contacting Django API: {exc}"
+    if not items:
+        return f"No activities logged in the last {days} day(s)."
+    lines = [f"Activities — last {days} day(s):\n"]
+    for a in items:
+        dur = f" ({a['duration_minutes']} min)" if a.get("duration_minutes") else ""
+        lines.append(f"  {a['date']}  {a['name']}{dur} — {a['calories_burned']} kcal burned  [id:{a['id']}]")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def delete_activity(activity_id: int) -> str:
+    """Delete a logged activity by ID.
+    Args:
+        activity_id: The ID of the activity to delete.
+    """
+    try:
+        await django_delete(f"/activity/{activity_id}/")
+    except httpx.HTTPStatusError as exc:
+        return _fmt_error(exc)
+    except httpx.RequestError as exc:
+        return f"Network error contacting Django API: {exc}"
+    return f"Activity {activity_id} deleted."
+
+
 async def _fetch_goals_and_summary(date: str) -> tuple[Any, Any]:
     """Fetch active goals and the daily summary concurrently."""
     import asyncio

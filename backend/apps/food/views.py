@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
 from apps.goals.models import Goal
+from apps.activity.models import Activity
 from .models import FoodItem, MealLog, MealLogEntry, Recipe
 from .serializers import (
     DailySummarySerializer,
@@ -141,12 +142,17 @@ class MealLogViewSet(viewsets.ModelViewSet):
             total_fat=Sum("fat"),
         )
 
+        activity_agg = Activity.objects.filter(date=target_date).aggregate(
+            total_burned=Sum("calories_burned"),
+        )
+
         payload = {
             "date": target_date,
             "total_calories": agg["total_calories"] or 0,
             "total_protein": agg["total_protein"] or 0,
             "total_carbs": agg["total_carbs"] or 0,
             "total_fat": agg["total_fat"] or 0,
+            "calories_burned": activity_agg["total_burned"] or 0,
             "meals": logs,
         }
 
@@ -193,6 +199,17 @@ class MealLogViewSet(viewsets.ModelViewSet):
             ).filter(Q(end_date__isnull=True) | Q(end_date__gte=start_date))
         )
 
+        # Activity calories burned per day in the date range
+        activity_rows = (
+            Activity.objects.filter(
+                date__gte=start_date,
+                date__lte=end_date,
+            )
+            .values("date")
+            .annotate(total_burned=Sum("calories_burned"))
+        )
+        burned_by_date = {row["date"]: row["total_burned"] for row in activity_rows}
+
         result = []
         for row in daily_rows:
             day = row["meal_log__date"]
@@ -211,6 +228,7 @@ class MealLogViewSet(viewsets.ModelViewSet):
                 "total_protein": float(row["total_protein"] or 0),
                 "total_carbs": float(row["total_carbs"] or 0),
                 "total_fat": float(row["total_fat"] or 0),
+                "total_burned": burned_by_date.get(day, 0),
                 "goals": day_goals,
             })
 

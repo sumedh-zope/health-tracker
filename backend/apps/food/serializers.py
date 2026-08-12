@@ -164,4 +164,5 @@ class DailySummarySerializer(serializers.Serializer):
     total_protein = serializers.DecimalField(max_digits=8, decimal_places=2)
     total_carbs = serializers.DecimalField(max_digits=8, decimal_places=2)
     total_fat = serializers.DecimalField(max_digits=8, decimal_places=2)
+    calories_burned = serializers.IntegerField()
     meals = MealLogSerializer(many=True)

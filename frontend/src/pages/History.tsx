@@ -13,6 +13,7 @@ interface DayEntry {
   total_protein: number
   total_carbs: number
   total_fat: number
+  total_burned: number
   goals: DayGoal[]
 }
 
@@ -94,8 +95,20 @@ export default function History() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
               <strong style={{ fontSize: '1rem' }}>{entry.date}</strong>
               <span style={{ color: 'var(--text-muted, #888)', fontSize: '0.85rem' }}>
-                {Math.round(entry.total_calories)} kcal
-                {goalsMap.calories && ` / ${Math.round(goalsMap.calories.target_value)} kcal`}
+                {entry.total_burned > 0 ? (
+                  <>
+                    Net: {Math.round(entry.total_calories - entry.total_burned)} kcal
+                    {' '}
+                    <span style={{ fontSize: '0.78rem' }}>
+                      (consumed {Math.round(entry.total_calories)} − burned {Math.round(entry.total_burned)})
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {Math.round(entry.total_calories)} kcal
+                    {goalsMap.calories && ` / ${Math.round(goalsMap.calories.target_value)} kcal`}
+                  </>
+                )}
               </span>
             </div>
 

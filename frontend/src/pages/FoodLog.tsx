@@ -3,8 +3,10 @@ import {
   getMealLogs,
   createMealLog,
   addMealLogEntry,
+  getActivities,
   type MealLog,
   type FoodItem,
+  type Activity,
 } from '../api'
 import FoodSearch from '../components/FoodSearch'
 import MealLogCard from '../components/MealLogCard'
@@ -20,6 +22,7 @@ function todayStr() {
 export default function FoodLog() {
   const [date, setDate] = useState(todayStr())
   const [logs, setLogs] = useState<MealLog[]>([])
+  const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,8 +37,12 @@ export default function FoodLog() {
     setLoading(true)
     setError(null)
     try {
-      const data = await getMealLogs(date)
+      const [data, activityData] = await Promise.all([
+        getMealLogs(date),
+        getActivities(date),
+      ])
       setLogs(data)
+      setActivities(activityData)
     } catch {
       setError('Failed to load meal logs.')
     } finally {
@@ -88,6 +95,8 @@ export default function FoodLog() {
       setAdding(false)
     }
   }
+
+  const totalBurned = activities.reduce((sum, a) => sum + Number(a.calories_burned), 0)
 
   const totals = logs.reduce(
     (acc, l) => {
@@ -194,8 +203,26 @@ export default function FoodLog() {
           <div className="totals-row">
             <div className="total-item">
               <span className="total-value">{Math.round(totals.calories)}</span>
-              <span className="total-label">kcal</span>
+              <span className="total-label">Consumed (kcal)</span>
             </div>
+            {totalBurned > 0 && (
+              <>
+                <div className="total-item">
+                  <span className="total-value" style={{ color: '#4caf50' }}>−{Math.round(totalBurned)}</span>
+                  <span className="total-label">Burned (kcal)</span>
+                </div>
+                <div className="total-item">
+                  <span className="total-value">{Math.round(totals.calories - totalBurned)}</span>
+                  <span className="total-label">Net (kcal)</span>
+                </div>
+              </>
+            )}
+            {totalBurned === 0 && (
+              <div className="total-item">
+                <span className="total-value">{Math.round(totals.calories)}</span>
+                <span className="total-label">kcal</span>
+              </div>
+            )}
             <div className="total-item">
               <span className="total-value">{Math.round(totals.protein)}g</span>
               <span className="total-label">Protein</span>
