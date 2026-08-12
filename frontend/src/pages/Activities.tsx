@@ -164,6 +164,7 @@ export default function Activities() {
           className="btn btn-primary"
           onClick={handleAdd}
           disabled={adding}
+          style={{ marginTop: '8px' }}
         >
           {adding ? 'Logging...' : 'Log Activity'}
         </button>
