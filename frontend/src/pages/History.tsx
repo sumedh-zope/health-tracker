@@ -114,7 +114,8 @@ export default function History() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
               {(['calories', 'protein', 'carbs', 'fat'] as DayGoal['goal_type'][]).map((type) => {
-                const actual = entry[ACTUAL_KEY[type]] as number
+                const raw = entry[ACTUAL_KEY[type]] as number
+                const actual = type === 'calories' ? raw - entry.total_burned : raw
                 const goal = goalsMap[type]
                 const colors = { calories: '#f5a623', protein: '#4caf50', carbs: '#2196f3', fat: '#ff9800' }
                 return (
